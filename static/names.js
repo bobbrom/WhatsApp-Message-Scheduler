@@ -29,9 +29,8 @@ $( document ).ready(function() {
                 break;
             }
         }
-        console.log(contactPhoneNumber);
         if(contactPhoneNumber == "" || contactPhoneNumber == undefined) {
-          console.log("No phone number found for " + contact['First name'] + " " + contact['Last name']);
+          //console.log("No phone number found for " + contact['First name'] + " " + contact['Last name']);
           continue;
         }
 
@@ -50,7 +49,6 @@ $( document ).ready(function() {
 
           if(phone.charAt(0) == '0') {
             phone = '+44' + phone.substring(1);
-            console.log(phone);
           }
 
 
@@ -59,8 +57,11 @@ $( document ).ready(function() {
 
           // If a matching contact was found
           if (contact) {
+            const firstName = contact['First name'] || contact['First name'] == "undefined" ? contact['First name'] : '';
+            const lastName = contact['Last name'] || contact['Last name'] == "undefined"  ? contact['Last name'] : '';
+
             // Get the full name of the contact
-            const fullName = `${contact['First name']} ${contact['Last name']}`;
+            const fullName = `${firstName} ${lastName}`;
 
             // Update the "Phone" column with the full name of the contact
             $(row).find('.message-name').text(fullName);
