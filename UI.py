@@ -59,6 +59,11 @@ def get_holiday_names():
     holidays = Holidays(country_code, year)
     return json.dumps(holidays.get_holiday_names_list()), 200
 
+
+@app.route("/message_send_buffer", methods=["GET"])
+def get_message_send_buffer():
+    return str(MessageSender.message_send_buffer), 200
+
 @app.route("/holiday_date", methods=["GET"])
 def get_holiday_name():
     country_code = request.args.get("country_code")

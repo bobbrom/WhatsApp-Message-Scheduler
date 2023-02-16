@@ -9,6 +9,7 @@
     <script src="{{ url_for('static',filename='contacts.js') }}"></script>
     <script src="{{ url_for('static',filename='names.js') }}"></script>
     <script src="{{ url_for('static',filename='countries.js') }}"></script>
+    <script src="{{ url_for('static',filename='datetime.js') }}"></script>
     <script src="{{ url_for('static',filename='script.js') }}"></script>
 	<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles.css') }}">
   </head>
@@ -49,8 +50,8 @@
         <label id="phone-label">Phone Number: <input type="text" name="recipient[]" id="recipient-number" class="recipient-number"/></label>
         <div class="new-recipient" id="new-recipient">Add Another</div><br />
         <label>Message: <input type="text" name="message" /></label>
-        <label>Date: <input type="date" name="date" id="input-date" min="2022-12-31" /></label>
-        <label>Time: <input type="time" name="time" /></label>
+        <label>Date: <input type="date" name="date" id="input-date" /></label>
+        <label>Time: <input type="time" name="time" id="input-time" /></label>
         <label>Repeat Unit:</label>
         <select name="repeat_unit">
           <option value="n" selected>None</option>
