@@ -5,6 +5,8 @@ import os
 import atexit
 import json
 from Holidays import Holidays
+import threading
+import time
 
 
 class Message:
@@ -23,10 +25,11 @@ class Message:
     - holiday (str): The holiday on which the message should be sent. This should be in the format
     'holiday name___country code'.
     """
+
     def __init__(self, recipient=None, message=None, hour=None, minute=None, date=None, repeat=None, repeat_unit=None,
                  holiday=None, csv_line=None):
         if csv_line is not None:
-            self.recipient, self.message, self.hour, self.minute, self.date, self.repeat, self.repeat_unit, self.holiday\
+            self.recipient, self.message, self.hour, self.minute, self.date, self.repeat, self.repeat_unit, self.holiday \
                 = ["" if a == "None" else a for a in csv_line.strip().split(',')]
         else:
             self.recipient = recipient
@@ -82,7 +85,8 @@ class Message:
                         elif self.repeat_unit == "m":
                             self.date = str(datetime.datetime(year, month + repeat, day)).split(" ")[0]
                         elif self.repeat_unit == "w":
-                            self.date = str(datetime.datetime(year, month, day) + datetime.timedelta(days=7)).split(" ")[0]
+                            self.date = \
+                            str(datetime.datetime(year, month, day) + datetime.timedelta(days=7)).split(" ")[0]
                         elif self.repeat_unit == "d":
                             self.date = str(datetime.datetime(year, month, day + repeat)).split(" ")[0]
                     else:
@@ -98,7 +102,6 @@ class Message:
                         country_code = self.holiday.split("___")[1]
                         holidayObj = Holidays(country_code, year)
                         self.date = holidayObj.get_date_of_holiday(holiday_name)
-                        print(self.date)
 
                 return False
         except Exception as e:
@@ -113,7 +116,10 @@ class Message:
 
 
 class MessageSender:
+    message_send_buffer = 120
+
     def __init__(self, messages_file):
+        self.is_running = True
         self.messages_file = messages_file
         self.messages = []
 
@@ -121,7 +127,6 @@ class MessageSender:
         if not os.path.exists(self.messages_file):
             f = open(self.messages_file, "w")
             f.close()
-
 
         # Open the CSV file in read mode
         with open(messages_file, 'r', encoding='UTF-8') as f:
@@ -165,8 +170,7 @@ class MessageSender:
         self.send_message(new_message)
 
     @staticmethod
-    def send_message(message_info):
-
+    def send_today(message_info):
         # Check if the current date matches the date specified for the message
         now = datetime.datetime.now()
         date_split = "-".split(message_info.date)
@@ -191,30 +195,85 @@ class MessageSender:
                     datetime.datetime.utcnow() - datetime.datetime(int(date_split[2]), int(date_split[1]),
                                                                    int(date_split[0]))).days % int(
                 message_info.repeat) == 0
+        return is_date or is_date_now or year_interval or month_interval or week_interval or day_interval
 
-        if message_info.hour is None or message_info.minute is None:
-            # If no hour or minute is specified, choose a random time in the morning
-            hour = random.randint(8, 11)
-            minute = random.randint(0, 59)
+    def send_message(self, message_info):
+        hour = int(message_info.hour)
+        minute = int(message_info.minute)
+
+        if message_info.recipient.startswith('+') or message_info.recipient.startswith('0'):
+            # If phone number starts with 0 make '+44' the country code
+            if message_info.recipient.startswith('0'):
+                message_info.recipient = '+44' + message_info.recipient[1:]
+
+            # Send message to individual
+            pywhatkit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute, MessageSender.message_send_buffer)
         else:
-            hour = int(message_info.hour)
-            minute = int(message_info.minute)
+            # Send message to group
+            pywhatkit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute, MessageSender.message_send_buffer)
 
-        if is_date or is_date_now or year_interval or month_interval or week_interval or day_interval:
-            if message_info.recipient.startswith('+') or message_info.recipient.startswith('0'):
-                # If phone number starts with 0 make '+44' the country code
-                if message_info.recipient.startswith('0'):
-                    message_info.recipient = '+44' + message_info.recipient[1:]
+    def delete_old_messages(self):
+        # Open the CSV file in read mode
+        with open(self.messages_file, 'r', encoding='UTF-8') as f:
+            # Create an empty list to store the new lines
+            new_lines = []
 
-                # Send message to individual
-                pywhatkit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute, 40)
-            else:
-                # Send message to group
-                pywhatkit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute, 40)
+            # Iterate through the lines in the CSV file
+            for line in f:
+                if len(line) > 5:
+                    # Create a message object for the line
+                    message = Message(csv_line=line)
+
+                    # If the message is not an old message, add the line to the list of new lines
+                    if not message.is_old_message():
+                        new_lines.append(message.make_line())
+
+        # Open the CSV file in write mode and overwrite the file with the new lines
+        with open(self.messages_file, 'w', encoding='UTF-8') as f:
+            f.writelines(new_lines)
 
     def send_messages(self):
-        for message_info in self.messages:
-            self.send_message(message_info)
+        wait_time = 60 * 5
+        last_get_messages = None  # keep track of the last time get_messages was called
+        while self.is_running:
+            # Check if it's time to call get_messages
+            now = datetime.datetime.now()
+
+            if last_get_messages is None or (now.hour == 0 and (now - last_get_messages).seconds > 60 * 60):
+                # Delete old messages
+                self.delete_old_messages()
+                # Call get_messages if it's the first run or if it's after 2 AM and the last call was before today
+                messages = self.get_messages()
+                last_get_messages = now  # update the last get_messages time
+
+            # Send the messages
+            for message_info in messages:
+                if message_info.hour is None or message_info.minute is None:
+                    # If no hour or minute is specified, choose a random time in the morning
+                    message_info.hour = random.randint(8, 11)
+                    message_info.minute = random.randint(0, 59)
+
+                if self.send_today(message_info):
+                    # boolean of if message will be sent within wait_time
+                    now = datetime.datetime.now()
+                    within_wait_time = datetime.timedelta(hours=message_info.hour, minutes=message_info.minute)
+                    now_time = datetime.timedelta(hours=now.hour, minutes=now.minute, seconds=now.second)
+
+                    if (now_time - within_wait_time).seconds < wait_time:
+                        self.send_message(message_info)
+                        messages.remove(message_info)
+
+            # Wait before checking again
+            time.sleep(wait_time)
+
+    def start_thread(self):
+        self.thread = threading.Thread(target=self.my_daemon_thread)
+        self.thread.daemon = True
+        self.thread.start()
+
+    def stop_thread(self):
+        self.is_running = False
+
 
 
 if __name__ == "__main__":
