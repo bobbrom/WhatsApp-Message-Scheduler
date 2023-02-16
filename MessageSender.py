@@ -117,6 +117,12 @@ class MessageSender:
         self.messages_file = messages_file
         self.messages = []
 
+        # If messages_file does not exist, create it
+        if not os.path.exists(self.messages_file):
+            f = open(self.messages_file, "w")
+            f.close()
+
+
         # Open the CSV file in read mode
         with open(messages_file, 'r', encoding='UTF-8') as f:
             # Create an empty list to store the new lines
@@ -195,12 +201,16 @@ class MessageSender:
             minute = int(message_info.minute)
 
         if is_date or is_date_now or year_interval or month_interval or week_interval or day_interval:
-            if message_info.recipient.startswith('+'):
+            if message_info.recipient.startswith('+') or message_info.recipient.startswith('0'):
+                # If phone number starts with 0 make '+44' the country code
+                if message_info.recipient.startswith('0'):
+                    message_info.recipient = '+44' + message_info.recipient[1:]
+
                 # Send message to individual
-                pywhatkit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute)
+                pywhatkit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute, 40)
             else:
                 # Send message to group
-                pywhatkit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute)
+                pywhatkit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute, 40)
 
     def send_messages(self):
         for message_info in self.messages:
