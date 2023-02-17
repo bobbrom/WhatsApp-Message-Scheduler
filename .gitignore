@@ -1,5 +1,6 @@
 data/*_*.json
 static/contacts.csv
+static/groups.csv
 data/calendarific_api_key.dat
 messages.txt
 .idea
