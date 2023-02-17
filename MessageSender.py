@@ -86,7 +86,7 @@ class Message:
                             self.date = str(datetime.datetime(year, month + repeat, day)).split(" ")[0]
                         elif self.repeat_unit == "w":
                             self.date = \
-                            str(datetime.datetime(year, month, day) + datetime.timedelta(days=7)).split(" ")[0]
+                                str(datetime.datetime(year, month, day) + datetime.timedelta(days=7)).split(" ")[0]
                         elif self.repeat_unit == "d":
                             self.date = str(datetime.datetime(year, month, day + repeat)).split(" ")[0]
                     else:
@@ -207,10 +207,12 @@ class MessageSender:
                 message_info.recipient = '+44' + message_info.recipient[1:]
 
             # Send message to individual
-            pywhatkit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute, MessageSender.message_send_buffer)
+            pywhatkit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute,
+                                  MessageSender.message_send_buffer, tap_close=True)
         else:
             # Send message to group
-            pywhatkit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute, MessageSender.message_send_buffer)
+            pywhatkit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute,
+                                           MessageSender.message_send_buffer, tap_close=True)
 
     def delete_old_messages(self):
         # Open the CSV file in read mode
@@ -273,7 +275,6 @@ class MessageSender:
 
     def stop_thread(self):
         self.is_running = False
-
 
 
 if __name__ == "__main__":
