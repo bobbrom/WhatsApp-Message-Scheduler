@@ -1,6 +1,6 @@
 import datetime
 import random
-import pywhatkit
+import pywhatkit as kit
 import os
 import atexit
 import json
@@ -207,11 +207,11 @@ class MessageSender:
                 message_info.recipient = '+44' + message_info.recipient[1:]
 
             # Send message to individual
-            pywhatkit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute,
+            kit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute,
                                   MessageSender.message_send_buffer, tab_close=True)
         else:
             # Send message to group
-            pywhatkit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute,
+            kit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute,
                                            MessageSender.message_send_buffer, tab_close=True)
 
     def delete_old_messages(self):
