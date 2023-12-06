@@ -208,11 +208,11 @@ class MessageSender:
 
             # Send message to individual
             pywhatkit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute,
-                                  MessageSender.message_send_buffer, tap_close=True)
+                                  MessageSender.message_send_buffer, tab_close=True)
         else:
             # Send message to group
             pywhatkit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute,
-                                           MessageSender.message_send_buffer, tap_close=True)
+                                           MessageSender.message_send_buffer, tab_close=True)
 
     def delete_old_messages(self):
         # Open the CSV file in read mode
