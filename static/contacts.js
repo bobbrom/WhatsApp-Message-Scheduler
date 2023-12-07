@@ -97,8 +97,10 @@ $(document).ready(function() {
 function setPhoneNumberInput(name) {
     // Find the contact with the matching name
     const contact = contacts.find(contact => {
-        const fullName = `${contact['First name']} ${contact['Last name']}`;
-        return fullName.toLowerCase().includes(name.toLowerCase());
+        const firstName = contact['First name'].toLowerCase();
+        const lastName = contact['Last name'].toLowerCase();
+        const inputName = name.toLowerCase();
+        return firstName === inputName || lastName === inputName;
     });
     console.log(contact)
 
