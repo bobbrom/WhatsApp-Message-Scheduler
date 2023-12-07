@@ -7,7 +7,8 @@ import json
 from Holidays import Holidays
 import threading
 import time
-
+import pandas as pd
+import csv
 
 class Message:
     """
@@ -149,8 +150,64 @@ class MessageSender:
         with open(messages_file, 'w', encoding='UTF-8') as f:
             f.writelines(new_lines)
 
+        self.csv_validator("static/contacts.csv")
+        self.csv_validator("static/groups.csv")
+
+        self.add_sequential_id_to_csv("static/contacts.csv")
+        self.add_sequential_id_to_csv("static/groups.csv")
+
         # Register the send_messages method to run on exit
         atexit.register(self.send_messages)
+
+    def add_sequential_id_to_csv(self,csv_file):
+        try:
+            # Read the CSV file with additional options
+            df = pd.read_csv(csv_file, delimiter=',', quotechar='"', on_bad_lines='skip')
+
+            # Check if 'ID' column exists, if not, add it
+            if 'ID' not in df.columns:
+                df['ID'] = range(1, len(df) + 1)
+
+            # Save the modified dataframe back to the CSV file
+            df.to_csv(csv_file, index=False)
+
+        except pd.errors.ParserError as e:
+            print("Parser error:", e)
+
+    def csv_validator(self, input_file_path):
+        clean_rows = []
+
+        with open(input_file_path, 'r', newline='', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            for row in reader:
+                clean_rows.append(row)
+
+        # Checking if the file has any content
+        if not clean_rows:
+            print("The file is empty.")
+            return
+
+        # Assuming the first row is the header
+        header = clean_rows[0]
+        expected_columns = len(header)
+
+        # Validate and adjust each row
+        corrected_lines = []
+        for row in clean_rows:
+            if len(row) < expected_columns:
+                # Add missing columns
+                row += [''] * (expected_columns - len(row))
+            elif len(row) > expected_columns:
+                # Truncate extra columns
+                row = row[:expected_columns]
+
+            corrected_lines.append(row)
+
+        # Write the corrected data back to the file
+        with open(input_file_path, 'w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerows(corrected_lines)
+
 
     def get_messages(self):
         messages = []
