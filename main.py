@@ -86,4 +86,4 @@ if __name__ == "__main__":
     # Create a MessageSender instance
     message_sender = MessageSender("messages.txt")
     # Run the Flask app
-    app.run()
+    app.run() 
