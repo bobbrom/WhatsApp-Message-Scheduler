@@ -208,11 +208,11 @@ class MessageSender:
 
             # Send message to individual
             kit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute,
-                                  MessageSender.message_send_buffer, tab_close=True)
+                            MessageSender.message_send_buffer)
         else:
             # Send message to group
             kit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute,
-                                           MessageSender.message_send_buffer, tab_close=True)
+                                     MessageSender.message_send_buffer)
 
     def delete_old_messages(self):
         # Open the CSV file in read mode
