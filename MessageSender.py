@@ -152,16 +152,18 @@ class MessageSender:
         with open(messages_file, 'w', encoding='UTF-8') as f:
             f.writelines(new_lines)
 
-        self.csv_validator("static/contacts.csv")
-        self.csv_validator("static/groups.csv")
+        if os.path.exists(os.path.join("static","contacts.csv")):
+            self.csv_validator(os.path.join("static","contacts.csv"))
+            self.add_sequential_id_to_csv(os.path.join("static","contacts.csv"))
 
-        self.add_sequential_id_to_csv("static/contacts.csv")
-        self.add_sequential_id_to_csv("static/groups.csv")
+        if os.path.exists(os.path.join("static","groups.csv")):
+            self.csv_validator(os.path.join("static", "groups.csv"))
+            self.add_sequential_id_to_csv(os.path.join("static","groups.csv"))
 
         # Register the send_messages method to run on exit
         atexit.register(self.send_messages)
 
-    def add_sequential_id_to_csv(csv_file):
+    def add_sequential_id_to_csv(self, csv_file):
         try:
             with open(csv_file, mode='r', newline='', encoding='utf-8') as file:
                 reader = csv.reader(file)
