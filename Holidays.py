@@ -1,6 +1,7 @@
-import requests
 import json
 import os
+
+import requests
 
 
 class Holidays:

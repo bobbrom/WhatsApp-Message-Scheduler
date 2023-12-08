@@ -1,8 +1,10 @@
-from flask import Flask, request, render_template
-from MessageSender import MessageSender
 import datetime
 import json
+
+from flask import Flask, request, render_template
+
 from Holidays import Holidays
+from MessageSender import MessageSender
 
 app = Flask(__name__)
 

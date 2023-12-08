@@ -1,14 +1,16 @@
-import datetime
-import random
-import pywhatkit as kit
-import os
 import atexit
+import csv
+import datetime
 import json
-from Holidays import Holidays
+import os
+import random
 import threading
 import time
-import pandas as pd
-import csv
+
+import pywhatkit as kit
+
+from Holidays import Holidays
+
 
 class Message:
     """
@@ -159,20 +161,37 @@ class MessageSender:
         # Register the send_messages method to run on exit
         atexit.register(self.send_messages)
 
-    def add_sequential_id_to_csv(self,csv_file):
+    def add_sequential_id_to_csv(csv_file):
         try:
-            # Read the CSV file with additional options
-            df = pd.read_csv(csv_file, delimiter=',', quotechar='"', on_bad_lines='skip')
+            with open(csv_file, mode='r', newline='', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                rows = list(reader)
+
+            header = rows[0]
+            id_column_index = None
 
             # Check if 'ID' column exists, if not, add it
-            if 'ID' not in df.columns:
-                df['ID'] = range(1, len(df) + 1)
+            if 'ID' not in header:
+                header.append('ID')
+                id_column_index = len(header) - 1
+            else:
+                id_column_index = header.index('ID')
 
-            # Save the modified dataframe back to the CSV file
-            df.to_csv(csv_file, index=False)
+            # Add a sequential ID to each row
+            if id_column_index is not None:
+                for i, row in enumerate(rows[1:], start=1):
+                    if len(row) <= id_column_index:
+                        row.extend([''] * (id_column_index - len(row) + 1))
+                    if not row[id_column_index]:
+                        row[id_column_index] = str(i)
 
-        except pd.errors.ParserError as e:
-            print("Parser error:", e)
+            # Write the modified data back to the CSV file
+            with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerows(rows)
+
+        except Exception as e:
+            print("Error:", e)
 
     def csv_validator(self, input_file_path):
         clean_rows = []
