@@ -86,6 +86,9 @@ def get_holiday_name():
 if __name__ == "__main__":
     # Create a MessageSender instance
     message_sender = MessageSender("messages.txt")
-    message_sender.start_thread()
+
+    message_sender.start()
+
+    print("Starting Flask app")
     # Run the Flask app
-    app.run(host='0.0.0.0')
+    app.run(host='0.0.0.0', port=5000, debug=True)

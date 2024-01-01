@@ -41,9 +41,6 @@ class MessageSender:
             self.csv_validator(os.path.join("static", "groups.csv"))
             self.add_sequential_id_to_csv(os.path.join("static", "groups.csv"))
 
-        # Register the send_messages method to run on exit
-        atexit.register(self.send_messages)
-
 
     def read_messages_from_csv(self):
         print("Reading messages from CSV file...")
@@ -249,9 +246,6 @@ class MessageSender:
     def send_messages(self):
         wait_time = 10
         while self.is_running:
-
-            print(".")
-
             if self._has_message_file_changed():
                 self.read_messages_from_csv()
                 self.delete_old_messages()
@@ -268,12 +262,13 @@ class MessageSender:
                 else:
                     self.send_another(message.recipient, message.message)
                     time.sleep(1)
+            self.delete_old_messages()
             if len(now_messages) > 0:
                 pyautogui.hotkey("ctrl", "w")
             time.sleep(wait_time)
 
-    def start_thread(self):
-        self.thread = threading.Thread(target=self.send_messages())
+    def start(self):
+        self.thread = threading.Thread(target=self.send_messages)
         self.thread.daemon = True
         self.thread.start()
 

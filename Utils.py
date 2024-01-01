@@ -7,9 +7,6 @@ import MessageSender
 
 def within_time(message, loop_buffer=2, message_send_buffer=50):
     # Get timestamp of message
-    print(message.date)
-    print(message.hour)
-    print(message.minute)
 
     message_timestamp = datetime.datetime.strptime(f"{message.date} {message.hour}:{message.minute}",
                                                    "%Y-%m-%d %H:%M")
@@ -17,8 +14,7 @@ def within_time(message, loop_buffer=2, message_send_buffer=50):
     # Get timestamp of now
     now_timestamp = datetime.datetime.now()
 
-    return message_timestamp >= now_timestamp - datetime.timedelta(
-        seconds=message_send_buffer + loop_buffer)
+    return message_timestamp >= now_timestamp - datetime.timedelta(seconds=message_send_buffer + loop_buffer) and not (message_timestamp >= now_timestamp)
 
 
 def prepare_string_for_url(message_string):
