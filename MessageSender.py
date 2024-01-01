@@ -31,7 +31,8 @@ class MessageSender:
             f.close()
 
         # # Read the messages from the CSV file
-        # self.read_messages_from_csv()
+        self.read_messages_from_csv()
+        self.delete_old_messages()
 
         if os.path.exists(os.path.join("static", "contacts.csv")):
             self.csv_validator(os.path.join("static", "contacts.csv"))
