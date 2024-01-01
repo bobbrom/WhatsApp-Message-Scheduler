@@ -27,6 +27,9 @@ class Message:
             self.recipient, self.message, self.hour, self.minute, self.date, self.repeat, self.repeat_unit, self.holiday \
                 = ["" if a == "None" else a for a in csv_line.strip().split(',')]
         else:
+            if recipient.startswith('0'):
+                recipient = '+44' + recipient[1:]
+
             self.recipient = recipient
             self.message = message
             self.hour = hour
@@ -53,16 +56,9 @@ class Message:
         try:
             if self.repeat_unit == "n":
                 if self.date is not None:
-                    date = datetime.datetime.strptime(self.date, '%Y-%m-%d')
+                    date = datetime.datetime.strptime(self.date + " " + self.hour + ":" + self.minute, '%Y-%m-%d %H:%M')
                     if date < datetime.datetime.now():
                         return True
-                    elif date == datetime.datetime.now():
-                        if self.hour is not None:
-                            if self.hour < datetime.datetime.now().hour:
-                                return True
-                            elif self.hour == datetime.datetime.now().hour:
-                                if self.minute < datetime.datetime.now().minute:
-                                    return True
                     else:
                         return False
                 else:

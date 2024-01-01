@@ -1,21 +1,27 @@
 import atexit
 import csv
 import datetime
+import hashlib
 import os
 import random
 import threading
 import time
+import webbrowser as web
+
+import pyautogui
+
+import Utils
 
 import pywhatkit as kit
 
 from Message import Message
 
-
 class MessageSender:
-    message_send_buffer = 120
-
     def __init__(self, messages_file):
+        self.message_send_buffer = 50
+        self.thread = None
         self.is_running = True
+        self.hash_of_file = None
         self.messages_file = messages_file
         self.messages = []
 
@@ -24,8 +30,25 @@ class MessageSender:
             f = open(self.messages_file, "w")
             f.close()
 
+        # # Read the messages from the CSV file
+        # self.read_messages_from_csv()
+
+        if os.path.exists(os.path.join("static", "contacts.csv")):
+            self.csv_validator(os.path.join("static", "contacts.csv"))
+            self.add_sequential_id_to_csv(os.path.join("static", "contacts.csv"))
+
+        if os.path.exists(os.path.join("static", "groups.csv")):
+            self.csv_validator(os.path.join("static", "groups.csv"))
+            self.add_sequential_id_to_csv(os.path.join("static", "groups.csv"))
+
+        # Register the send_messages method to run on exit
+        atexit.register(self.send_messages)
+
+
+    def read_messages_from_csv(self):
+        print("Reading messages from CSV file...")
         # Open the CSV file in read mode
-        with open(messages_file, 'r', encoding='UTF-8') as f:
+        with open(self.messages_file, 'r', encoding='UTF-8') as f:
             # Create an empty list to store the new lines
             new_lines = []
 
@@ -39,22 +62,12 @@ class MessageSender:
                     if not message.is_old_message():
                         self.messages.append(message)
                         new_lines.append(message.make_line())
-                        print(message)
-
+                    else:
+                        print("Skipping old message:", message)
         # Open the CSV file in write mode and overwrite the file with the new lines
-        with open(messages_file, 'w', encoding='UTF-8') as f:
+        with open(self.messages_file, 'w', encoding='UTF-8') as f:
             f.writelines(new_lines)
-
-        if os.path.exists(os.path.join("static", "contacts.csv")):
-            self.csv_validator(os.path.join("static", "contacts.csv"))
-            self.add_sequential_id_to_csv(os.path.join("static", "contacts.csv"))
-
-        if os.path.exists(os.path.join("static", "groups.csv")):
-            self.csv_validator(os.path.join("static", "groups.csv"))
-            self.add_sequential_id_to_csv(os.path.join("static", "groups.csv"))
-
-        # Register the send_messages method to run on exit
-        atexit.register(self.send_messages)
+        print("Done.")
 
     def add_sequential_id_to_csv(self, csv_file):
         try:
@@ -122,11 +135,13 @@ class MessageSender:
             writer = csv.writer(file)
             writer.writerows(corrected_lines)
 
+
     def get_messages(self):
         messages = []
-        for message in self.messages:
-            if not message.is_old_message():
-                messages.append(message)
+        self.read_messages_from_csv()
+        for message_info in self.messages:
+            if not message_info.is_old_message():
+                messages.append(message_info)
         return sorted(messages, key=lambda message: message.date)
 
     def add_message(self, recipient, message, hour=None, minute=None, date=None, repeat=None, repeat_unit=None,
@@ -137,52 +152,7 @@ class MessageSender:
         # Save message to file
         with open(self.messages_file, 'a', encoding='UTF-8') as f:
             f.write(f"{recipient},{message},{hour},{minute},{date},{repeat},{repeat_unit},{holiday_name}\n")
-        self.send_message(new_message)
 
-    @staticmethod
-    def send_today(message_info):
-        # Check if the current date matches the date specified for the message
-        now = datetime.datetime.now()
-        date_split = "-".split(message_info.date)
-
-        is_date = message_info.date is None
-        is_date_now = now.strftime('%Y-%m-%d') == message_info.date
-
-        # Check if the message should be repeated
-        if message_info.repeat is not None:
-            # Parse the repeat interval
-            year_interval = month_interval = week_interval = day_interval = False
-        else:
-            year_interval = message_info.repeat_unit == 'y' and (
-                    now.strftime(date_split[2] + '-%m-%d') == message_info.date and (
-                    datetime.datetime.now().year - int(date_split[2])) % int(message_info.repeat) == 0)
-            week_interval = message_info.repeat_unit == 'w' and (
-                    datetime.datetime.utcnow() - datetime.datetime(int(date_split[2]), int(date_split[1]),
-                                                                   int(date_split[0]))).days % (
-                                    7 * int(message_info.repeat)) == 0
-            month_interval = datetime.datetime.utcnow().day == date_split[0]
-            day_interval = message_info.repeat_unit == 'd' and (
-                    datetime.datetime.utcnow() - datetime.datetime(int(date_split[2]), int(date_split[1]),
-                                                                   int(date_split[0]))).days % int(
-                message_info.repeat) == 0
-        return is_date or is_date_now or year_interval or month_interval or week_interval or day_interval
-
-    def send_message(self, message_info):
-        hour = int(message_info.hour)
-        minute = int(message_info.minute)
-
-        if message_info.recipient.startswith('+') or message_info.recipient.startswith('0'):
-            # If phone number starts with 0 make '+44' the country code
-            if message_info.recipient.startswith('0'):
-                message_info.recipient = '+44' + message_info.recipient[1:]
-
-            # Send message to individual
-            kit.sendwhatmsg(message_info.recipient, message_info.message, hour, minute,
-                            MessageSender.message_send_buffer, tab_close=True)
-        else:
-            # Send message to group
-            kit.sendwhatmsg_to_group(message_info.recipient, message_info.message, hour, minute,
-                                     MessageSender.message_send_bufferpyth, tab_close=True)
 
     def delete_old_messages(self):
         # Open the CSV file in read mode
@@ -204,42 +174,106 @@ class MessageSender:
         with open(self.messages_file, 'w', encoding='UTF-8') as f:
             f.writelines(new_lines)
 
+    def _has_message_file_changed(self):
+        hash_of_file = hashlib.md5(open(self.messages_file, 'rb').read()).hexdigest()
+        output = False
+
+        if self.hash_of_file != hash_of_file:
+            output = True
+            self.hash_of_file = hash_of_file
+        return output
+
+    @staticmethod
+    def sendwhatmsg_instantly(
+            phone_no: str,
+            message: str,
+            wait_time: int = 15
+    ) -> None:
+        """
+        Send WhatsApp Message Instantly
+
+        Taken and modified from pywhatkit https://github.com/Ankit404butfound/PyWhatKit
+        """
+
+        # Prepare message for URL
+        message = Utils.prepare_string_for_url(message)
+
+        web.open(f"https://web.whatsapp.com/send?phone={phone_no}&text={message}")
+
+        time.sleep(2)
+
+        pyautogui.press("F11")
+
+        time.sleep(4)
+
+        time.sleep(wait_time - 4)
+
+        # 61.66666666666667%, 95.0%
+        x, y = Utils.get_coord(61.66666666666667, 95.0)
+        pyautogui.click(x, y)
+
+        pyautogui.press("enter")
+
+    @staticmethod
+    def send_another(recipient, message_string):
+        # Coordinates where the mouse will click
+        # %, %
+        x, y = Utils.get_coord(15.416666666666668, 12.314814814814815)
+
+        # Move the mouse to the specified coordinates
+        pyautogui.moveTo(x, y)
+
+        # Click at the current mouse location
+        pyautogui.click()
+
+        # Wait a moment for any window or field to activate
+        time.sleep(1)
+
+        # Type phone number
+        pyautogui.write(recipient)
+
+        time.sleep(1)
+
+        x, y = Utils.get_coord(16.40625, 27.777777777777775)
+        # Click the contact
+        pyautogui.moveTo(x, y)
+
+        pyautogui.click()
+
+        time.sleep(1)
+
+        pyautogui.write(message_string)
+
+        pyautogui.press("enter")
+
     def send_messages(self):
-        wait_time = 60 * 5
-        last_get_messages = None  # keep track of the last time get_messages was called
+        wait_time = 10
         while self.is_running:
-            # Check if it's time to call get_messages
-            now = datetime.datetime.now()
 
-            if last_get_messages is None or (now.hour == 0 and (now - last_get_messages).seconds > 60 * 60):
-                # Delete old messages
+            print(".")
+
+            if self._has_message_file_changed():
+                self.read_messages_from_csv()
                 self.delete_old_messages()
-                # Call get_messages if it's the first run or if it's after 2 AM and the last call was before today
-                messages = self.get_messages()
-                last_get_messages = now  # update the last get_messages time
+                self.messages = self.get_messages()
 
-            # Send the messages
-            for message_info in messages:
-                if message_info.hour is None or message_info.minute is None:
-                    # If no hour or minute is specified, choose a random time in the morning
-                    message_info.hour = random.randint(8, 11)
-                    message_info.minute = random.randint(0, 59)
+            now_messages = [message for message in self.messages if Utils.within_time(message, wait_time, self.message_send_buffer)]
 
-                if self.send_today(message_info):
-                    # boolean of if message will be sent within wait_time
-                    now = datetime.datetime.now()
-                    within_wait_time = datetime.timedelta(hours=message_info.hour, minutes=message_info.minute)
-                    now_time = datetime.timedelta(hours=now.hour, minutes=now.minute, seconds=now.second)
-
-                    if (now_time - within_wait_time).seconds < wait_time:
-                        self.send_message(message_info)
-                        messages.remove(message_info)
-
-            # Wait before checking again
+            for message in now_messages:
+                # if first message
+                if message == now_messages[0]:
+                    # Send the message
+                    self.sendwhatmsg_instantly(message.recipient, message.message, self.message_send_buffer)
+                    time.sleep(1)
+                else:
+                    self.send_another(message.recipient, message.message)
+                    time.sleep(1)
+            if len(now_messages) > 0:
+                pyautogui.hotkey("ctrl", "w")
             time.sleep(wait_time)
 
     def start_thread(self):
-        self.thread = threading.Thread(target=self.my_daemon_thread)
+        self.thread = threading.Thread(target=self.send_messages())
         self.thread.daemon = True
         self.thread.start()
 
@@ -253,4 +287,4 @@ if __name__ == "__main__":
         open('messages.txt', 'w').close()
 
     messageSender = MessageSender('messages.txt')
-    messageSender.send_messages()
+    messageSender.start_thread()

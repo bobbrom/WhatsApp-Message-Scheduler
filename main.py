@@ -11,6 +11,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
+    print("index")
     # Get the list of messages from the MessageSender instance
     messages = message_sender.get_messages()
 
@@ -23,6 +24,7 @@ def add_message():
     # Get the message data from the request form
     recipients = request.form.getlist('recipient[]')
     recipients = [a for a in recipients if a != '']
+    print(recipients)
     message = request.form.get("message")
 
     time = request.form.get("time")
@@ -54,17 +56,13 @@ def add_message():
 
     return "Message added", 201
 
+
 @app.route("/holidays", methods=["GET"])
 def get_holiday_names():
     country_code = request.args.get("country_code")
     year = datetime.datetime.now().year
     holidays = Holidays(country_code, year)
     return json.dumps(holidays.get_holiday_names_list()), 200
-
-
-@app.route("/message_send_buffer", methods=["GET"])
-def get_message_send_buffer():
-    return str(MessageSender.message_send_buffer), 200
 
 @app.route("/holiday_date", methods=["GET"])
 def get_holiday_name():
@@ -84,8 +82,10 @@ def get_holiday_name():
         holiday_date = holidays.get_date_of_holiday(holiday_name, year + 1)
     return holiday_date, 200
 
+
 if __name__ == "__main__":
     # Create a MessageSender instance
     message_sender = MessageSender("messages.txt")
+    message_sender.start_thread()
     # Run the Flask app
     app.run(host='0.0.0.0')
